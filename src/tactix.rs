@@ -150,6 +150,7 @@ where
     fn new() -> Self {
         Self { _p: PhantomData }
     }
+
     fn run(&self, mut act: A) -> Addr<A> {
         let (tx, mut rx) = mpsc::channel::<Envelope<A>>(100);
         let addr = Addr::new(tx);
