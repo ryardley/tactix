@@ -4,5 +4,5 @@
 
 Actix provides a great API for working with actors but it is missing some key features of the Actor Model that really need to be there. 
 
-- Heirarchical Actor Supervision
-- Async Handlers
+- [ ] Heirarchical Actor Supervision
+- [ ] Async Handlers
