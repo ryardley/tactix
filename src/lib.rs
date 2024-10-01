@@ -1,10 +1,15 @@
+mod addr;
+mod context;
+mod envelope;
+mod envelope_inner;
 mod tactix;
-
-pub use tactix::{Actor, Context, Handler, Message};
+mod traits;
 
 #[cfg(test)]
 mod tests {
-    use crate::tactix::*;
+    use async_trait::async_trait;
+
+    use crate::tactix::{Actor, Context, Handler, Message};
 
     #[derive(Debug)]
     pub struct Increment;
@@ -38,28 +43,32 @@ mod tests {
         type Context = Context<Self>;
     }
 
+    #[async_trait]
     impl Handler<Increment> for Counter {
-        fn handle(&mut self, _msg: Increment) {
+        async fn handle(&mut self, _msg: Increment) {
             println!("INC");
             self.count += 1;
         }
     }
 
+    #[async_trait]
     impl Handler<Decrement> for Counter {
-        fn handle(&mut self, _msg: Decrement) {
+        async fn handle(&mut self, _msg: Decrement) {
             println!("DEC");
             self.count -= 1;
         }
     }
 
+    #[async_trait]
     impl Handler<GetCount> for Counter {
-        fn handle(&mut self, _: GetCount) -> u64 {
+        async fn handle(&mut self, _: GetCount) -> u64 {
             println!("GET");
             let s = self.count;
             println!("SENDING: {}", s);
             s
         }
     }
+
     #[tokio::test]
     async fn test_counter() -> Result<(), Box<String>> {
         let addr = Counter::new().start();
