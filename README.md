@@ -1,3 +1,5 @@
+_NOTE: This is currently a proof of concept and is not published or ready for usage_
+
 # Tactix
 
 #### A Simple Actor Model Implementation inspired by Actix
