@@ -54,6 +54,7 @@ impl<A: Actor> Addr<A> {
         self.send_env(env);
 
         // receive on the oneshot
-        Ok(rx.await.map_err(|_| "yikes".to_string())?)
+        Ok(rx.await.map_err(|_| "Error receiving response".to_string())?)
     }
 }
+
