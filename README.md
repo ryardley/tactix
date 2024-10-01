@@ -2,7 +2,7 @@
 
 #### A Simple Actor Model Implementation inspired by Actix
 
-Actix provides a great API for working with actors but it is missing some key features of the Actor Model that really need to be there. Tactix attempts to follow the Actix API whilst fixing some issues inherent within it.
+[Actix](https://github.com/actix/actix) provides a great API for working with actors but it is missing some key features of the Actor Model that really need to be there. Tactix attempts to follow the Actix API whilst fixing some issues inherent within it.
 
 Here we apply some techniques from [Alice Ryhl's Great Actor Model in Rust Article](https://ryhl.io/blog/actors-with-tokio/) and apply Actix's handler syntax to get the best of both worlds.
 
