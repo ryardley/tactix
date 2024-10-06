@@ -40,8 +40,12 @@ impl Counter {
     }
 }
 
+#[async_trait]
 impl Actor for Counter {
     type Context = Context<Self>;
+    async fn started(&self) {
+        println!("hello");
+    }
 }
 
 #[async_trait]

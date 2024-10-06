@@ -4,11 +4,14 @@ use crate::{addr::Addr, context::Context, envelope::Envelope};
 use async_trait::async_trait;
 use tokio::sync::{mpsc, oneshot, Mutex};
 
+#[async_trait]
 pub trait Actor: Clone + Sized + Send + Sync + 'static {
     type Context;
     fn start(self) -> Addr<Self> {
         Context::new().run(self)
     }
+
+    async fn started(&self) {}
 }
 
 pub trait Message: Send + 'static {

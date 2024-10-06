@@ -17,16 +17,24 @@ impl<A: Actor> Context<A> {
         Self { _p: PhantomData }
     }
 
-    pub fn run(&self, mut act: A) -> Addr<A> {
+    pub fn run(&self, act: A) -> Addr<A> {
         let (tx, mut rx) = mpsc::channel::<Envelope<A>>(100);
         let addr = Addr::new(tx);
+        let act_ref = Arc::new(Mutex::new(act));
 
-        tokio::spawn(async move {
-            let act_ref = Arc::new(Mutex::new(act));
-            
-            while let Some(mut msg) = rx.recv().await {
-                msg.handle(act_ref.clone()).await
+        tokio::spawn({
+            let a = act_ref.clone();
+            async move {
+
+                while let Some(mut msg) = rx.recv().await {
+                    msg.handle(a.clone()).await
+                }
             }
+        });
+
+        tokio::spawn({
+            let a = act_ref.clone();
+            async move { a.lock().await.started().await; }
         });
         addr
     }
