@@ -72,14 +72,17 @@ impl Handler<GetCount> for Counter {
 #[tokio::main]
 async fn main() -> Result<(), Box<String>> {
     let addr = Counter::new().start();
+    let incrementor: Recipient<Increment> = addr.clone().recipient();
+    let decrementor: Recipient<Decrement> = addr.clone().recipient();
     addr.do_send(Increment);
-    addr.do_send(Increment);
+    incrementor.do_send(Increment);
     addr.do_send(Increment);
     addr.do_send(Increment);
     addr.do_send(Decrement);
+    decrementor.do_send(Decrement);
     let count = addr.send(GetCount).await.unwrap();
 
-    assert_eq!(count, 3);
+    assert_eq!(count, 2);
     Ok(())
 }
 ```
@@ -87,7 +90,7 @@ async fn main() -> Result<(), Box<String>> {
 
 
 - [x] Async Handlers
-- [x] Receivers
+- [x] Recipient
 - [ ] started()
 - [ ] ctx.spawn()
 - [ ] Heirarchical Actor Supervision

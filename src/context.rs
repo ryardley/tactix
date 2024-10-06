@@ -1,6 +1,6 @@
-use std::marker::PhantomData;
+use std::{marker::PhantomData, sync::Arc};
 
-use tokio::sync::mpsc;
+use tokio::sync::{mpsc, Mutex};
 
 use crate::{
     addr::Addr,
@@ -22,8 +22,10 @@ impl<A: Actor> Context<A> {
         let addr = Addr::new(tx);
 
         tokio::spawn(async move {
+            let act_ref = Arc::new(Mutex::new(act));
+            
             while let Some(mut msg) = rx.recv().await {
-                msg.handle(&mut act).await
+                msg.handle(act_ref.clone()).await
             }
         });
         addr

@@ -1,6 +1,8 @@
+use std::sync::Arc;
+
 use crate::{addr::Addr, context::Context, envelope::Envelope};
 use async_trait::async_trait;
-use tokio::sync::{mpsc, oneshot};
+use tokio::sync::{mpsc, oneshot, Mutex};
 
 pub trait Actor: Clone + Sized + Send + Sync + 'static {
     type Context;
@@ -33,7 +35,7 @@ where
 /// This allows us to run our handler via our Envelope
 #[async_trait]
 pub trait EnvelopeApi<A: Actor> {
-    async fn handle(&mut self, act: &mut A);
+    async fn handle(&mut self, act: Arc<Mutex<A>>);
 }
 
 #[async_trait]
