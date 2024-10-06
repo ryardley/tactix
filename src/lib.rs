@@ -9,7 +9,10 @@ mod traits;
 
 #[cfg(test)]
 mod tests {
-    use crate::tactix::{Actor, Context, Handler, Message, Sender};
+    use crate::{
+        recipient::Recipient,
+        tactix::{Actor, Context, Handler, Message, Sender},
+    };
     use async_trait::async_trait;
 
     #[derive(Debug)]
@@ -29,7 +32,7 @@ mod tests {
     impl Message for GetCount {
         type Response = u64;
     }
-
+    #[derive(Clone)]
     pub struct Counter {
         count: u64,
     }
@@ -73,14 +76,17 @@ mod tests {
     #[tokio::test]
     async fn test_counter() -> Result<(), Box<String>> {
         let addr = Counter::new().start();
+        let incrementor: Recipient<Increment> = addr.clone().recipient();
+        let decrementor: Recipient<Decrement> = addr.clone().recipient();
         addr.do_send(Increment);
-        addr.do_send(Increment);
+        incrementor.do_send(Increment);
         addr.do_send(Increment);
         addr.do_send(Increment);
         addr.do_send(Decrement);
+        decrementor.do_send(Decrement);
         let count = addr.send(GetCount).await.unwrap();
 
-        assert_eq!(count, 3);
+        assert_eq!(count, 2);
         Ok(())
     }
 }

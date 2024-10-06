@@ -2,6 +2,7 @@ use crate::tactix::{Actor, Envelope, EnvelopeInner, EnvelopeSender, Handler, Mes
 use async_trait::async_trait;
 use tokio::sync::{mpsc, oneshot};
 
+#[derive(Clone)]
 pub struct AddrSender<A> {
     tx: mpsc::Sender<Envelope<A>>,
 }

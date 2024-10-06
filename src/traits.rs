@@ -2,7 +2,7 @@ use crate::{addr::Addr, context::Context, envelope::Envelope};
 use async_trait::async_trait;
 use tokio::sync::{mpsc, oneshot};
 
-pub trait Actor: Sized + Send + Sync + 'static {
+pub trait Actor: Clone + Sized + Send + Sync + 'static {
     type Context;
     fn start(self) -> Addr<Self> {
         Context::new().run(self)
@@ -37,7 +37,7 @@ pub trait EnvelopeApi<A: Actor> {
 }
 
 #[async_trait]
-pub trait Sender<M: Message> {
+pub trait Sender<M: Message>: Sync {
     fn do_send(&self, msg: M);
     async fn send(&self, msg: M) -> Result<M::Response, String>;
 }
