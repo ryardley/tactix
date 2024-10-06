@@ -160,7 +160,6 @@ mod tests {
     use crate::{
         recipient::Recipient, tactix::{Actor, Context, Handler, Message, Sender}, BankAccount, Counter, Decrement, Deposit, GetAccountInfo, GetCount, Increment, Withdraw
     };
-    use async_trait::async_trait;
     use tokio::time::sleep;
 
     #[tokio::test]
@@ -194,8 +193,8 @@ mod tests {
             let account = account.clone();
             async move {
                 for _ in 0..num_operations {
-                    account.send(Deposit(deposit_amount)).await.unwrap();
-                    sleep(Duration::from_millis(1)).await;
+                    account.do_send(Deposit(deposit_amount));
+                    sleep(Duration::from_millis(3)).await;
                 }
             }
         });
@@ -204,8 +203,8 @@ mod tests {
             let account = account.clone();
             async move {
                 for _ in 0..num_operations {
-                    let _ = account.send(Withdraw(withdraw_amount)).await.unwrap();
-                    sleep(Duration::from_millis(1)).await;
+                    account.do_send(Withdraw(withdraw_amount));
+                    sleep(Duration::from_millis(9)).await;
                 }
             }
         });
@@ -216,10 +215,6 @@ mod tests {
         // Get the final account info
         let (final_balance, total_deposits, total_withdrawals) =
             account.send(GetAccountInfo).await.unwrap();
-
-        println!("Final balance: {}", final_balance);
-        println!("Total deposits: {}", total_deposits);
-        println!("Total withdrawals: {}", total_withdrawals);
 
         // Assertions to check for race conditions
         let expected_deposits = deposit_amount * num_operations;
