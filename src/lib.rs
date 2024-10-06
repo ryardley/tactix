@@ -116,7 +116,7 @@ impl Actor for BankAccount {
 #[async_trait]
 impl Handler<Deposit> for BankAccount {
     async fn handle(&mut self, msg: Deposit) {
-        tokio::time::sleep(Duration::from_millis(10)).await;
+        tokio::time::sleep(Duration::from_millis(6)).await;
         self.balance += msg.0;
         self.total_deposits += msg.0;
         println!("Deposit: {}. New balance: {}", msg.0, self.balance);
@@ -125,8 +125,8 @@ impl Handler<Deposit> for BankAccount {
 #[async_trait]
 impl Handler<Withdraw> for BankAccount {
     async fn handle(&mut self, msg: Withdraw) -> Result<(), String> {
-        tokio::time::sleep(Duration::from_millis(10)).await;
         if self.balance >= msg.0 {
+            tokio::time::sleep(Duration::from_millis(10)).await;
             self.balance -= msg.0;
             self.total_withdrawals += msg.0;
             println!("Withdrawal: {}. New balance: {}", msg.0, self.balance);
