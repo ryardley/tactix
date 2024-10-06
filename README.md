@@ -87,7 +87,7 @@ async fn main() -> Result<(), Box<String>> {
 
 
 - [x] Async Handlers
-- [ ] Receivers
+- [x] Receivers
 - [ ] started()
 - [ ] ctx.spawn()
 - [ ] Heirarchical Actor Supervision
