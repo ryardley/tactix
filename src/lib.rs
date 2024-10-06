@@ -1,15 +1,16 @@
 mod addr;
+mod addr_sender;
 mod context;
 mod envelope;
 mod envelope_inner;
+mod recipient;
 mod tactix;
 mod traits;
 
 #[cfg(test)]
 mod tests {
+    use crate::tactix::{Actor, Context, Handler, Message, Sender};
     use async_trait::async_trait;
-
-    use crate::tactix::{Actor, Context, Handler, Message};
 
     #[derive(Debug)]
     pub struct Increment;
