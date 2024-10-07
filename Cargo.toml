@@ -3,6 +3,7 @@ name = "tactix"
 version = "0.0.0"
 edition = "2021"
 description = "A simple actor model based on Actix and tokio. Not ready for production."
+license = "MIT"
 
 [dependencies]
 async-trait = "0.1.82"
