@@ -27,6 +27,7 @@ where
     async fn handle(&mut self, msg: M) -> M::Response;
 }
 
+/// This enables the host to pack messages to an envelope
 pub trait ToEnvelope<A, M>
 where
     A: Actor,
@@ -35,18 +36,20 @@ where
     fn pack(&self, msg: Option<M>, tx: Option<oneshot::Sender<M::Response>>) -> Envelope<A>;
 }
 
-/// This allows us to run our handler via our Envelope
+/// This allows us to run our handler via our actor bound Envelope
 #[async_trait]
 pub trait EnvelopeApi<A: Actor> {
     async fn handle(&mut self, act: Arc<Mutex<A>>);
 }
 
+/// Represent the ability to send messages
 #[async_trait]
 pub trait Sender<M: Message>: Sync {
     fn do_send(&self, msg: M);
     async fn send(&self, msg: M) -> Result<M::Response, String>;
 }
 
+/// Represent the ability to send messages wrapped in actor envelopes 
 pub trait EnvelopeSender<A: Actor> {
     fn get_tx(&self) -> mpsc::Sender<Envelope<A>>;
     fn send_env(&self, env: Envelope<A>) {

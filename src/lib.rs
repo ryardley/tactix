@@ -1,7 +1,7 @@
 use std::time::Duration;
 
 use async_trait::async_trait;
-use tactix::{Actor, Context, Handler, Message};
+pub use tactix::{Actor, Context, Handler, Message};
 
 mod addr;
 mod addr_sender;
@@ -93,7 +93,7 @@ impl Message for GetBalance {
 
 struct GetAccountInfo;
 impl Message for GetAccountInfo {
-    type Response = (u64,u64,u64);
+    type Response = (u64, u64, u64);
 }
 
 #[derive(Clone)]
@@ -146,8 +146,8 @@ impl Handler<Withdraw> for BankAccount {
 
 #[async_trait]
 impl Handler<GetAccountInfo> for BankAccount {
-    async fn handle(&mut self, _msg: GetAccountInfo) -> (u64,u64,u64) {
-        (self.balance,self.total_deposits,self.total_withdrawals)
+    async fn handle(&mut self, _msg: GetAccountInfo) -> (u64, u64, u64) {
+        (self.balance, self.total_deposits, self.total_withdrawals)
     }
 }
 #[async_trait]
@@ -162,7 +162,9 @@ mod tests {
     use std::time::Duration;
 
     use crate::{
-        recipient::Recipient, tactix::{Actor, Context, Handler, Message, Sender}, BankAccount, Counter, Decrement, Deposit, GetAccountInfo, GetCount, Increment, Withdraw
+        recipient::Recipient,
+        tactix::{Actor, Sender},
+        BankAccount, Counter, Decrement, Deposit, GetAccountInfo, GetCount, Increment, Withdraw,
     };
     use tokio::time::sleep;
 

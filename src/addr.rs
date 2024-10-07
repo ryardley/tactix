@@ -7,7 +7,7 @@ use crate::{
 };
 use tokio::sync::mpsc;
 
-
+/// A struct to represent an actors address
 #[derive(Clone)]
 pub struct Addr<A: Actor> {
     tx: AddrSender<A>,
@@ -20,6 +20,7 @@ impl<A: Actor> Addr<A> {
         }
     }
 
+    /// Convert to a Recipient<M>
     pub fn recipient<M>(self) -> Recipient<M>
     where
         A: Actor + Handler<M>,
