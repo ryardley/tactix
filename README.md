@@ -4,9 +4,11 @@ _NOTE: This is currently a proof of concept and is not published or ready for us
 
 #### A Simple Actor Model Implementation inspired by Actix
 
-[Actix](https://github.com/actix/actix) provides a great API for working with actors but it is missing some key features of the Actor Model that really need to be there such as heirarchical supervision. Also Actix was created as a solution to asynchrony before tokio was available and as a result implemented it's own runtime. Overtime it switched to tokio as a default async runtime however much of the baggage from the original runtime remains in the code which has led to complexity. Tactix attempts to follow the Actix API whilst fixing some issues inherent within it utilizing as much of tokio as it can.
+[Actix](https://github.com/actix/actix) provides a great API for working with actors but it is missing some key features of the Actor Model that really need to be there such as heirarchical supervision. Also Actix was created as a solution to asynchrony before tokio was available and as a result implemented it's own runtime. Overtime it switched to tokio as a default async runtime however much of the baggage from the original runtime remains in the code which has led to complexity. Tactix attempts to follow the Actix API whilst fixing some issues inherent within it utilizing as much of tokio as it can. 
 
-Here we apply some techniques from [Alice Ryhl's Great Actor Model in Rust Article](https://ryhl.io/blog/actors-with-tokio/) and apply Actix's handler syntax to get the best of both worlds.
+Alice Ryhl a maintainer of tokio wrote a [great article on creating an actor model in tokio](https://ryhl.io/blog/actors-with-tokio) where it is outlined how to create an actor model system using tokio channels. This however leads to relatively verbose code as events must be discriminated. 
+
+Tactix attempts to apply some techniques from [Alice Ryhl's article](https://ryhl.io/blog/actors-with-tokio/) and combine them with Actix's handler syntax whilst enabling safe async handlers in order to get the best of both worlds.
 
 ## Usage
 
