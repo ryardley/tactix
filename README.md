@@ -92,4 +92,5 @@ async fn main() -> Result<(), Box<String>> {
 - [x] Async Handlers
 - [x] Recipient
 - [x] started()
+- [x] Ensure handlers run in a non-blocking mutually exclusive way
 - [ ] Heirarchical Actor Supervision
