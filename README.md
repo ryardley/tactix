@@ -1,4 +1,4 @@
-_NOTE: This is currently a proof of concept and is not published or ready for usage_
+_NOTE: This is currently a proof of concept and is not ready for usage_
 
 # Tactix
 
