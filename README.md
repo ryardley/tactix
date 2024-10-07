@@ -10,6 +10,8 @@ Alice Ryhl a maintainer of tokio wrote a [great article on creating an actor mod
 
 Tactix attempts to apply some techniques from [Alice Ryhl's article](https://ryhl.io/blog/actors-with-tokio/) and combine them with Actix's handler syntax whilst enabling safe async handlers in order to get the best of both worlds.
 
+This is not a drop-in replacement for Actix but should be a relatively light lift and should improve developer erganomics for async handlers.   
+
 ## Usage
 
 ```rust
