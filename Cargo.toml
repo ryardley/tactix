@@ -1,6 +1,6 @@
 [package]
 name = "tactix"
-version = "0.0.0"
+version = "0.0.1"
 edition = "2021"
 description = "A simple actor model based on Actix and tokio. Not ready for production."
 license = "MIT"
