@@ -6,7 +6,7 @@ description = "A simple Actor Model based on Actix and Tokio."
 license = "MIT"
 repository = "https://github.com/ryardley/tactix"
 documentation = "https://docs.rs/tactix"
-keywords = ["actor", "concurrency", "actor model", "distributed", "messaging"]
+keywords = ["actor", "concurrency", "actormodel", "distributed", "messaging"]
 categories = ["asynchronous"]
 readme = "README.md"
 
