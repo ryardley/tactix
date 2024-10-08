@@ -1,9 +1,14 @@
 [package]
 name = "tactix"
-version = "0.0.2"
+version = "0.0.3"
 edition = "2021"
 description = "A simple Actor Model based on Actix and Tokio."
 license = "MIT"
+repository = "https://github.com/ryardley/tactix"
+documentation = "https://docs.rs/tactix"
+keywords = ["actor", "concurrency", "actor model", "distributed", "messaging"]
+categories = ["asynchronous"]
+readme = "README.md"
 
 [dependencies]
 async-trait = "0.1.82"
