@@ -8,16 +8,30 @@ use crate::{
 use tokio::sync::mpsc;
 
 /// A struct to represent an actors address
-#[derive(Clone)]
 pub struct Addr<A: Actor> {
     tx: AddrSender<A>,
 }
 
+/// Addr needs to be cloned
+impl<A: Actor> Clone for Addr<A>
+where
+    A: Actor,
+{
+    fn clone(&self) -> Self {
+        Addr::from(self.tx.clone())
+    }
+}
+
 impl<A: Actor> Addr<A> {
+    /// Create a new Addr from an Envelope sender
     pub fn new(tx: mpsc::Sender<Envelope<A>>) -> Self {
         Self {
             tx: AddrSender::new(tx),
         }
+    }
+
+    pub fn from(sender: AddrSender<A>) -> Self {
+        Self { tx: sender }
     }
 
     /// Convert to a Recipient<M>

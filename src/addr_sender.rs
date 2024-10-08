@@ -2,9 +2,16 @@ use crate::tactix::{Actor, Envelope, EnvelopeInner, EnvelopeSender, Handler, Mes
 use async_trait::async_trait;
 use tokio::sync::{mpsc, oneshot};
 
-#[derive(Clone)]
-pub struct AddrSender<A> {
+/// AddrSender is a Sender that is bound to the Given Actor and can only send messages for that
+/// specific Actor on it's Envelope sender.
+pub struct AddrSender<A:Actor> {
     tx: mpsc::Sender<Envelope<A>>,
+}
+
+impl<A:Actor> Clone for AddrSender<A> {
+    fn clone(&self) -> Self {
+        AddrSender::new(self.tx.clone())
+    }
 }
 
 impl<A: Actor> AddrSender<A> {
@@ -38,10 +45,12 @@ where
     A: Actor + Handler<M>,
     M: Message,
 {
+    /// Pack and send the given message without a return channel via AddrSender<A>'s internal Envelope<A> sender.
     fn do_send(&self, msg: M) {
         self.send_env(self.pack(Some(msg), None))
     }
 
+    /// Pack and send the given message with a return channel via AddrSender<A>'s internal Envelope<A> sender.
     async fn send(&self, msg: M) -> Result<M::Response, String> {
         // make a oneshot
         let (tx, rx) = oneshot::channel::<M::Response>();

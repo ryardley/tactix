@@ -5,6 +5,8 @@ use tokio::sync::Mutex;
 
 use crate::traits::{Actor, EnvelopeApi};
 
+/// An envelope is bound to an Actor and represents a Message sent through a specific actor
+/// Envelopes hold an envelope implementation.
 pub struct Envelope<A>(pub Box<dyn EnvelopeApi<A> + Send + 'static>);
 
 impl<A> Envelope<A> {

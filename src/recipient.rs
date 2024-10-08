@@ -1,8 +1,7 @@
-use crate::{
-    tactix::{Message, Sender},
-};
+use crate::tactix::{Message, Sender};
 use async_trait::async_trait;
 
+/// An object that has the ability to send messages of a given type M 
 pub struct Recipient<M: Message> {
     tx: Box<dyn Sender<M>>,
 }

@@ -8,6 +8,7 @@ use crate::{
     traits::{Actor, EnvelopeApi},
 };
 
+/// Methods concerned with the context of the given Actor
 pub struct Context<A> {
     _p: PhantomData<A>,
 }
@@ -17,6 +18,8 @@ impl<A: Actor> Context<A> {
         Self { _p: PhantomData }
     }
 
+    /// Setup a Mailbox for this Actor. Pull messages of the Mailbox and process them as the come.
+    /// In a separate thread run the started function.
     pub fn run(&self, act: A) -> Addr<A> {
         let (tx, mut rx) = mpsc::channel::<Envelope<A>>(100);
         let addr = Addr::new(tx);
