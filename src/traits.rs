@@ -4,25 +4,33 @@ use crate::{addr::Addr, context::Context, envelope::Envelope};
 use async_trait::async_trait;
 use tokio::sync::{mpsc, oneshot, Mutex};
 
-/// An Actor in the system. An object that manages it's memory purely by receiving messages
+/// Defines an Actor. An Actor is an independent unit that processes messages, makes decisions, and communicates with other Actors without shared state.
 #[async_trait]
 pub trait Actor: Sized + Send + Sync + 'static {
-    type Context;
-    fn start(self) -> Addr<Self> {
+    type Context: Send + Sync + 'static;
+
+    /// Start the actor and return an address
+    fn start(self) -> Addr<Self>
+    where
+        Self: Actor<Context = Context<Self>>,
+    {
         Context::new().run(self)
     }
 
+    /// Async handler that is run after the actor is started
     async fn started(&self) {}
+
+    /// Async handler that is run after the actor has been stopped
+    async fn stopped(&self) {}
 }
 
-
-/// A Message can be sent to an Actor. It has a response which can be returned when using the
-/// `send` async method.
+/// Defines a message type for actor communication, specifying an associated response type.
 pub trait Message: Send + 'static {
     type Response: Send;
 }
 
-/// This handles messages on Actors
+/// Defines an asynchronous message handler for processing actor messages and returning responses.
+///
 /// Handlers can be added to actors like so:
 ///
 /// ```
@@ -42,7 +50,7 @@ pub trait Message: Send + 'static {
 ///
 /// #[async_trait]
 /// impl Handler<SomeMessage> for MyActor {
-///   async fn handle(&mut self, msg:SomeMessage) -> u8 {
+///   async fn handle(&mut self, msg:SomeMessage, _:Self::Context) -> u8 {
 ///      // Implement your handler
 ///      1u8
 ///   }
@@ -53,9 +61,10 @@ pub trait Message: Send + 'static {
 #[async_trait]
 pub trait Handler<M>
 where
+    Self: Actor,
     M: Message,
 {
-    async fn handle(&mut self, msg: M) -> M::Response;
+    async fn handle(&mut self, msg: M, ctx: Self::Context) -> M::Response;
 }
 
 /// This enables the host to pack messages to an envelope
@@ -70,7 +79,7 @@ where
 /// This allows us to run our handler via our actor bound Envelope
 #[async_trait]
 pub trait EnvelopeApi<A: Actor> {
-    async fn handle(&mut self, act: Arc<Mutex<A>>);
+    async fn handle(&mut self, act: Arc<Mutex<A>>, ctx: A::Context);
 }
 
 /// Encapsulates the idea of a channel transmitter. Represents the ability to send messages
@@ -80,7 +89,7 @@ pub trait Sender<M: Message>: Sync {
     async fn send(&self, msg: M) -> Result<M::Response, String>;
 }
 
-/// Represent the ability to send messages wrapped in actor envelopes 
+/// Represent the ability to send messages wrapped in actor envelopes
 pub trait EnvelopeSender<A: Actor> {
     fn get_tx(&self) -> mpsc::Sender<Envelope<A>>;
 

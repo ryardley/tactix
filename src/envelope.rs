@@ -20,7 +20,7 @@ impl<A> EnvelopeApi<A> for Envelope<A>
 where
     A: Actor,
 {
-    async fn handle(&mut self, act: Arc<Mutex<A>>) {
-        self.0.handle(act).await
+    async fn handle(&mut self, act: Arc<Mutex<A>>, ctx: A::Context) {
+        self.0.handle(act, ctx).await
     }
 }

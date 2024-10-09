@@ -44,7 +44,7 @@
 //! // Note: this requires an async_trait macro!
 //! #[async_trait]
 //! impl Handler<Increment> for Counter {
-//!   async fn handle(&mut self, msg:Increment) {
+//!   async fn handle(&mut self, msg:Increment, _:Self::Context) {
 //!     println!("Increment");
 //!     self.count += 1;
 //!   }
@@ -58,7 +58,7 @@
 //!
 //! #[async_trait]
 //! impl Handler<Decrement> for Counter {
-//!   async fn handle(&mut self, msg:Decrement) {
+//!   async fn handle(&mut self, msg:Decrement, _:Self::Context) {
 //!     println!("Decrement");
 //!     self.count -= 1;
 //!   }
@@ -72,7 +72,7 @@
 //!
 //! #[async_trait]
 //! impl Handler<GetCount> for Counter {
-//!   async fn handle(&mut self, msg:GetCount) -> u64 {
+//!   async fn handle(&mut self, msg:GetCount, _:Self::Context) -> u64 {
 //!     println!("GetCount");
 //!     self.count
 //!   }
@@ -177,7 +177,7 @@ mod tests {
 
     #[async_trait]
     impl Handler<Deposit> for BankAccount {
-        async fn handle(&mut self, msg: Deposit) {
+        async fn handle(&mut self, msg: Deposit, _:Self::Context) {
             tokio::time::sleep(Duration::from_millis(6)).await;
             self.balance += msg.0;
             self.total_deposits += msg.0;
@@ -186,7 +186,7 @@ mod tests {
     }
     #[async_trait]
     impl Handler<Withdraw> for BankAccount {
-        async fn handle(&mut self, msg: Withdraw) -> Result<(), String> {
+        async fn handle(&mut self, msg: Withdraw, _:Self::Context) -> Result<(), String> {
             if self.balance >= msg.0 {
                 tokio::time::sleep(Duration::from_millis(10)).await;
                 self.balance -= msg.0;
@@ -204,13 +204,14 @@ mod tests {
 
     #[async_trait]
     impl Handler<GetAccountInfo> for BankAccount {
-        async fn handle(&mut self, _msg: GetAccountInfo) -> (u64, u64, u64) {
+        async fn handle(&mut self, _msg: GetAccountInfo, _:Self::Context) -> (u64, u64, u64) {
+            println!("GetAccountInfo!");
             (self.balance, self.total_deposits, self.total_withdrawals)
         }
     }
     #[async_trait]
     impl Handler<GetBalance> for BankAccount {
-        async fn handle(&mut self, _msg: GetBalance) -> u64 {
+        async fn handle(&mut self, _msg: GetBalance, _:Self::Context) -> u64 {
             self.balance
         }
     }

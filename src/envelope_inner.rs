@@ -19,9 +19,9 @@ where
     A: Actor + Handler<M>,
     M: Message,
 {
-    async fn handle(&mut self, act: Arc<Mutex<A>>) {
+    async fn handle(&mut self, act: Arc<Mutex<A>>, ctx: A::Context) {
         if let Some(msg) = self.msg.take() {
-            let res = act.lock().await.handle(msg).await;
+            let res = act.lock().await.handle(msg, ctx).await;
             if let Some(tx) = self.tx.take() {
                 let _ = tx.send(res);
             }

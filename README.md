@@ -49,7 +49,7 @@ impl Actor for Counter {
 
 #[async_trait]
 impl Handler<Increment> for Counter {
-    async fn handle(&mut self, _msg: Increment) {
+    async fn handle(&mut self, _msg: Increment, _:Self::Context) {
         println!("INC");
         self.count += 1;
     }
@@ -57,7 +57,7 @@ impl Handler<Increment> for Counter {
 
 #[async_trait]
 impl Handler<Decrement> for Counter {
-    async fn handle(&mut self, _msg: Decrement) {
+    async fn handle(&mut self, _msg: Decrement, _:Self::Context) {
         println!("DEC");
         self.count -= 1;
     }
@@ -65,7 +65,7 @@ impl Handler<Decrement> for Counter {
 
 #[async_trait]
 impl Handler<GetCount> for Counter {
-    async fn handle(&mut self, _: GetCount) -> u64 {
+    async fn handle(&mut self, _: GetCount, _:Self::Context) -> u64 {
         println!("GET");
         let s = self.count;
         println!("SENDING: {}", s);
