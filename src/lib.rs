@@ -1,4 +1,4 @@
-//! A simple actor model implementation based on Actix and Tokio
+//! A simple actor model implementation based on Tokio
 //! ## Tactix
 //! Tactix is an erganomic Actor Model framework for Rust inspired by  [Actix](https://github.com/actix/actix)
 //!
