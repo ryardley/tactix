@@ -1,6 +1,6 @@
 [package]
 name = "tactix"
-version = "0.0.5"
+version = "0.0.6"
 edition = "2021"
 description = "A simple Actor Model based on Tokio."
 license = "MIT"
