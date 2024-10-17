@@ -121,8 +121,6 @@ mod recipient;
 mod tactix;
 mod traits;
 
-//////////////////////////
-
 #[cfg(test)]
 mod tests {
     use std::time::Duration;
@@ -134,90 +132,121 @@ mod tests {
     use async_trait::async_trait;
     use tokio::time::sleep;
 
-    struct Deposit(u64);
-    impl Message for Deposit {
-        type Response = ();
-    }
+    #[tokio::test]
+    async fn test_stop() {
+        struct Stop;
+        impl Message for Stop {
+            type Response = ();
+        }
 
-    struct Withdraw(u64);
-    impl Message for Withdraw {
-        type Response = Result<(), String>;
-    }
+        struct Msg(u64);
+        impl Message for Msg {
+            type Response = ();
+        }
 
-    struct GetBalance;
-    impl Message for GetBalance {
-        type Response = u64;
-    }
+        struct Ticker {
+            pub messages: Vec<u64>,
+        }
 
-    struct GetAccountInfo;
-    impl Message for GetAccountInfo {
-        type Response = (u64, u64, u64);
-    }
-
-    #[derive(Clone)]
-    struct BankAccount {
-        balance: u64,
-        total_deposits: u64,
-        total_withdrawals: u64,
-    }
-
-    impl BankAccount {
-        fn new(initial_balance: u64) -> Self {
-            Self {
-                balance: initial_balance,
-                total_deposits: 0,
-                total_withdrawals: 0,
+        #[async_trait]
+        impl Actor for Ticker {
+            type Context = Context<Self>;
+            async fn started(&mut self, ctx:Self::Context) {
             }
         }
-    }
 
-    impl Actor for BankAccount {
-        type Context = Context<Self>;
-    }
-
-    #[async_trait]
-    impl Handler<Deposit> for BankAccount {
-        async fn handle(&mut self, msg: Deposit, _:Self::Context) {
-            tokio::time::sleep(Duration::from_millis(6)).await;
-            self.balance += msg.0;
-            self.total_deposits += msg.0;
-            println!("Deposit: {}. New balance: {}", msg.0, self.balance);
-        }
-    }
-    #[async_trait]
-    impl Handler<Withdraw> for BankAccount {
-        async fn handle(&mut self, msg: Withdraw, _:Self::Context) -> Result<(), String> {
-            if self.balance >= msg.0 {
-                tokio::time::sleep(Duration::from_millis(10)).await;
-                self.balance -= msg.0;
-                self.total_withdrawals += msg.0;
-                println!("Withdrawal: {}. New balance: {}", msg.0, self.balance);
-                Ok(())
-            } else {
-                Err(format!(
-                    "Insufficient funds. Current balance: {}",
-                    self.balance
-                ))
+        #[async_trait]
+        impl Handler<Msg> for Ticker {
+            async fn handle(&mut self, msg: Msg, _ctx: Self::Context) {
+                self.messages.push(msg.0);
             }
-        }
-    }
-
-    #[async_trait]
-    impl Handler<GetAccountInfo> for BankAccount {
-        async fn handle(&mut self, _msg: GetAccountInfo, _:Self::Context) -> (u64, u64, u64) {
-            println!("GetAccountInfo!");
-            (self.balance, self.total_deposits, self.total_withdrawals)
-        }
-    }
-    #[async_trait]
-    impl Handler<GetBalance> for BankAccount {
-        async fn handle(&mut self, _msg: GetBalance, _:Self::Context) -> u64 {
-            self.balance
         }
     }
 
     #[tokio::test]
     async fn test_bank_account_race_condition() {
+        struct Deposit(u64);
+        impl Message for Deposit {
+            type Response = ();
+        }
+
+        struct Withdraw(u64);
+        impl Message for Withdraw {
+            type Response = Result<(), String>;
+        }
+
+        struct GetBalance;
+        impl Message for GetBalance {
+            type Response = u64;
+        }
+
+        struct GetAccountInfo;
+        impl Message for GetAccountInfo {
+            type Response = (u64, u64, u64);
+        }
+
+        #[derive(Clone)]
+        struct BankAccount {
+            balance: u64,
+            total_deposits: u64,
+            total_withdrawals: u64,
+        }
+
+        impl BankAccount {
+            fn new(initial_balance: u64) -> Self {
+                Self {
+                    balance: initial_balance,
+                    total_deposits: 0,
+                    total_withdrawals: 0,
+                }
+            }
+        }
+
+        impl Actor for BankAccount {
+            type Context = Context<Self>;
+        }
+
+        #[async_trait]
+        impl Handler<Deposit> for BankAccount {
+            async fn handle(&mut self, msg: Deposit, _: Self::Context) {
+                tokio::time::sleep(Duration::from_millis(6)).await;
+                self.balance += msg.0;
+                self.total_deposits += msg.0;
+                println!("Deposit: {}. New balance: {}", msg.0, self.balance);
+            }
+        }
+        #[async_trait]
+        impl Handler<Withdraw> for BankAccount {
+            async fn handle(&mut self, msg: Withdraw, _: Self::Context) -> Result<(), String> {
+                if self.balance >= msg.0 {
+                    tokio::time::sleep(Duration::from_millis(10)).await;
+                    self.balance -= msg.0;
+                    self.total_withdrawals += msg.0;
+                    println!("Withdrawal: {}. New balance: {}", msg.0, self.balance);
+                    Ok(())
+                } else {
+                    Err(format!(
+                        "Insufficient funds. Current balance: {}",
+                        self.balance
+                    ))
+                }
+            }
+        }
+
+        #[async_trait]
+        impl Handler<GetAccountInfo> for BankAccount {
+            async fn handle(&mut self, _msg: GetAccountInfo, _: Self::Context) -> (u64, u64, u64) {
+                println!("GetAccountInfo!");
+                (self.balance, self.total_deposits, self.total_withdrawals)
+            }
+        }
+        #[async_trait]
+        impl Handler<GetBalance> for BankAccount {
+            async fn handle(&mut self, _msg: GetBalance, _: Self::Context) -> u64 {
+                self.balance
+            }
+        }
+
         let initial_balance = 1000;
         let account = BankAccount::new(initial_balance).start();
 
@@ -262,6 +291,7 @@ mod tests {
             total_deposits, expected_deposits,
             "Total deposits don't match expected value"
         );
+
         assert_eq!(
             total_withdrawals, expected_withdrawals,
             "Total withdrawals don't match expected value"

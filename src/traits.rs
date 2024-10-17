@@ -18,10 +18,10 @@ pub trait Actor: Sized + Send + Sync + 'static {
     }
 
     /// Async handler that is run after the actor is started
-    async fn started(&self) {}
+    async fn started(&mut self, ctx:Self::Context) {}
 
     /// Async handler that is run after the actor has been stopped
-    async fn stopped(&self) {}
+    async fn stopped(&mut self, ctx:Self::Context) {}
 }
 
 /// Defines a message type for actor communication, specifying an associated response type.

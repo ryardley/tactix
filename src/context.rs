@@ -1,11 +1,11 @@
 use std::{marker::PhantomData, sync::Arc};
-
 use tokio::sync::{broadcast, mpsc, Mutex};
 
 use crate::{
     addr::Addr,
     envelope::Envelope,
-    traits::{Actor, EnvelopeApi},
+    traits::{Actor, EnvelopeApi, Sender},
+    Handler, Message,
 };
 
 /// Methods concerned with the context of the given Actor
@@ -15,6 +15,7 @@ where
 {
     _p: PhantomData<A>,
     stop_tx: broadcast::Sender<()>,
+    addr: Option<Addr<A>>,
 }
 
 impl<A> Clone for Context<A>
@@ -25,6 +26,7 @@ where
         Context {
             stop_tx: self.stop_tx.clone(),
             _p: PhantomData,
+            addr: None,
         }
     }
 }
@@ -39,6 +41,7 @@ where
         Self {
             _p: PhantomData,
             stop_tx,
+            addr: None,
         }
     }
 
@@ -49,43 +52,44 @@ where
 
     /// Setup a Mailbox for this Actor. Pull messages of the Mailbox and process them as the come.
     /// In a separate thread run the started function.
-    pub fn run(self, act: A) -> Addr<A>
+    pub fn run(mut self, act: A) -> Addr<A>
     where
         A: Actor<Context = Self>,
     {
         let (tx, mut rx) = mpsc::channel::<Envelope<A>>(100);
         let addr = Addr::new(tx);
         let act_ref = Arc::new(Mutex::new(act));
+        self.addr = Some(addr.clone());
 
         // Listen for events sent to the Actor and handle them.
         // If a stop signal is received then stop listening.
         tokio::spawn({
             let a = act_ref.clone();
-            let mut stop_rx = self.stop_tx.subscribe();
-            let c = self.clone();
+            let mut stop_rx = self.clone().stop_tx.subscribe();
+            let ctx = self.clone();
             async move {
                 loop {
                     tokio::select! {
                         Some(mut msg) = rx.recv() => {
-                            msg.handle(a.clone(), c.clone()).await;
+                            msg.handle(a.clone(), ctx.clone()).await;
                         },
                         Ok(_) = stop_rx.recv() => {
                             break;
                         }
                     }
                 }
-                a.lock().await.stopped().await;
+                a.lock().await.stopped(ctx.clone()).await;
             }
         });
 
         // Run the started() method on the actor. If the stop signal is received then stop.
         tokio::spawn({
             let a = act_ref.clone();
-            let mut stop_rx = self.stop_tx.subscribe();
-
+            let mut stop_rx = self.clone().stop_tx.subscribe();
+            let ctx = self;
             async move {
-                let mutex = a.lock().await;
-                let fut = mutex.started();
+                let mut mutex = a.lock().await;
+                let fut = mutex.started(ctx.clone());
                 tokio::select! {
                     _ = fut => {},
                     Ok(_) = stop_rx.recv() => {}
@@ -93,5 +97,15 @@ where
             }
         });
         addr
+    }
+
+    fn notify<M>(&mut self, msg: M)
+    where
+        M: Message,
+        A: Actor + Handler<M>,
+    {
+        if let Some(addr) = &self.addr {
+            addr.do_send(msg);
+        }
     }
 }
