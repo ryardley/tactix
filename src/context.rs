@@ -1,6 +1,6 @@
 use std::{marker::PhantomData, sync::Arc};
 
-use tokio::sync::{broadcast, mpsc, Mutex};
+use tokio::sync::{broadcast, mpsc, RwLock};
 
 use crate::{
     addr::Addr,
@@ -55,7 +55,7 @@ where
     {
         let (tx, mut rx) = mpsc::channel::<Envelope<A>>(100);
         let addr = Addr::new(tx);
-        let act_ref = Arc::new(Mutex::new(act));
+        let act_ref = Arc::new(RwLock::new(act));
 
         // Listen for events sent to the Actor and handle them.
         // If a stop signal is received then stop listening.
@@ -74,7 +74,7 @@ where
                         }
                     }
                 }
-                a.lock().await.stopped().await;
+                a.read().await.stopped().await;
             }
         });
 
@@ -84,8 +84,8 @@ where
             let mut stop_rx = self.stop_tx.subscribe();
 
             async move {
-                let mutex = a.lock().await;
-                let fut = mutex.started();
+                let act_readonly = a.read().await;
+                let fut = act_readonly.started();
                 tokio::select! {
                     _ = fut => {},
                     Ok(_) = stop_rx.recv() => {}

@@ -1,7 +1,7 @@
 use std::sync::Arc;
 
 use async_trait::async_trait;
-use tokio::sync::{oneshot::Sender, Mutex};
+use tokio::sync::{oneshot::Sender, RwLock};
 
 use crate::traits::{Actor, EnvelopeApi, Handler, Message};
 
@@ -19,9 +19,9 @@ where
     A: Actor + Handler<M>,
     M: Message,
 {
-    async fn handle(&mut self, act: Arc<Mutex<A>>, ctx: A::Context) {
+    async fn handle(&mut self, act: Arc<RwLock<A>>, ctx: A::Context) {
         if let Some(msg) = self.msg.take() {
-            let res = act.lock().await.handle(msg, ctx).await;
+            let res = act.write().await.handle(msg, ctx).await;
             if let Some(tx) = self.tx.take() {
                 let _ = tx.send(res);
             }

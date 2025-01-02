@@ -2,7 +2,7 @@ use std::sync::Arc;
 
 use crate::{addr::Addr, context::Context, envelope::Envelope};
 use async_trait::async_trait;
-use tokio::sync::{mpsc, oneshot, Mutex};
+use tokio::sync::{mpsc, oneshot, RwLock};
 
 /// Defines an Actor. An Actor is an independent unit that processes messages, makes decisions, and communicates with other Actors without shared state.
 #[async_trait]
@@ -79,7 +79,7 @@ where
 /// This allows us to run our handler via our actor bound Envelope
 #[async_trait]
 pub trait EnvelopeApi<A: Actor> {
-    async fn handle(&mut self, act: Arc<Mutex<A>>, ctx: A::Context);
+    async fn handle(&mut self, act: Arc<RwLock<A>>, ctx: A::Context);
 }
 
 /// Encapsulates the idea of a channel transmitter. Represents the ability to send messages
