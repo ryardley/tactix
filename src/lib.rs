@@ -125,6 +125,27 @@ mod traits;
 
 #[cfg(test)]
 mod tests {
+    use tokio::sync::mpsc;
+
+    use crate::{Actor, Context};
+
+    #[tokio::test]
+    async fn started_yields_mutex() -> Result<(), String> {
+        struct TestActor {
+            rx: mpsc::Receiver<usize>
+        }
+
+        impl Actor for TestActor {
+            type Context = Context<Self>;
+        }
+
+
+        Ok(())
+    }
+}
+
+#[cfg(test)]
+mod bank_tests {
     use std::time::Duration;
 
     use crate::{
@@ -177,7 +198,7 @@ mod tests {
 
     #[async_trait]
     impl Handler<Deposit> for BankAccount {
-        async fn handle(&mut self, msg: Deposit, _:Self::Context) {
+        async fn handle(&mut self, msg: Deposit, _: Self::Context) {
             tokio::time::sleep(Duration::from_millis(6)).await;
             self.balance += msg.0;
             self.total_deposits += msg.0;
@@ -186,7 +207,7 @@ mod tests {
     }
     #[async_trait]
     impl Handler<Withdraw> for BankAccount {
-        async fn handle(&mut self, msg: Withdraw, _:Self::Context) -> Result<(), String> {
+        async fn handle(&mut self, msg: Withdraw, _: Self::Context) -> Result<(), String> {
             if self.balance >= msg.0 {
                 tokio::time::sleep(Duration::from_millis(10)).await;
                 self.balance -= msg.0;
@@ -204,14 +225,14 @@ mod tests {
 
     #[async_trait]
     impl Handler<GetAccountInfo> for BankAccount {
-        async fn handle(&mut self, _msg: GetAccountInfo, _:Self::Context) -> (u64, u64, u64) {
+        async fn handle(&mut self, _msg: GetAccountInfo, _: Self::Context) -> (u64, u64, u64) {
             println!("GetAccountInfo!");
             (self.balance, self.total_deposits, self.total_withdrawals)
         }
     }
     #[async_trait]
     impl Handler<GetBalance> for BankAccount {
-        async fn handle(&mut self, _msg: GetBalance, _:Self::Context) -> u64 {
+        async fn handle(&mut self, _msg: GetBalance, _: Self::Context) -> u64 {
             self.balance
         }
     }

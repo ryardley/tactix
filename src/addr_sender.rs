@@ -52,7 +52,7 @@ where
 
     /// Pack and send the given message with a return channel via AddrSender<A>'s internal Envelope<A> sender.
     async fn send(&self, msg: M) -> Result<M::Response, String> {
-        println!("SEND");
+
         // make a oneshot
         let (tx, rx) = oneshot::channel::<M::Response>();
 

@@ -98,4 +98,5 @@ async fn main() -> Result<(), Box<String>> {
 - [x] started()
 - [x] Ensure handlers run in a non-blocking mutually exclusive way
 - [ ] `ctx.spawn` & `ctx.wait` or similar.
+- [ ] `ctx.notify`
 - [ ] Heirarchical Actor Supervision
