@@ -96,8 +96,23 @@ pub use macros::Message;
 
 pub struct ActorSystem;
 
+/// Message to gracefully shut down the global actor system.
+///
+/// Sending this to [`ActorSystem::addr()`] triggers a graceful shutdown:
+/// the system finishes processing the current message, stops all children,
+/// calls [`Actor::stopped`], and then exits.
+#[derive(Message)]
+pub struct Shutdown;
+
 #[async_trait]
 impl Actor for ActorSystem {}
+
+#[async_trait]
+impl Handler<Shutdown> for ActorSystem {
+    async fn handle(&mut self, _: Shutdown, ctx: &Ctx<Self>) {
+        ctx.stop();
+    }
+}
 
 static ACTOR_SYSTEM: OnceLock<Ctx<ActorSystem>> = OnceLock::new();
 
@@ -117,6 +132,24 @@ impl ActorSystem {
                 SupervisionStrategy::default(),
             )
         })
+    }
+
+    /// Returns the address of the global `ActorSystem`.
+    ///
+    /// Use this to send messages (e.g. [`Shutdown`]) to the system from
+    /// anywhere in your application.
+    pub fn addr() -> Addr<ActorSystem> {
+        Self::global().address()
+    }
+
+    /// Gracefully shut down the entire actor system.
+    ///
+    /// Sends [`Shutdown`] to the system and waits for it to finish processing
+    /// pending messages, stop all children, and exit.
+    pub async fn shutdown() {
+        let addr = Self::addr();
+        addr.tell(Shutdown);
+        addr.wait_until_stopped().await;
     }
 }
 
