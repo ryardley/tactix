@@ -10,6 +10,11 @@ Tactix attempts to apply some techniques from [Alice Ryhl's article](https://ryh
 
 This is not a drop-in replacement for Actix but should be a relatively light lift and should improve developer erganomics for async handlers.   
 
+For more informamtion on the inner workings of tactix you can read the blog post series on it:
+
+1. [Rolling Your Own Rust Actor Model](https://vpunk.sh/blog/actor-model-in-rust/)
+2. [Building self healing systems](https://vpunk.sh/blog/actor-model-in-rust-supervision/)
+
 ## Usage
 
 ```rust
