@@ -4,7 +4,7 @@ resolver = "3"
 
 [package]
 name = "tactix"
-version = "0.0.7"
+version = "1.0.0"
 edition = "2021"
 description = "A simple Actor Model based on Actix and Tokio."
 license = "MIT"
