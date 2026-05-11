@@ -1,106 +1,83 @@
-//! A simple actor model implementation based on Actix and Tokio
-//! ## Tactix
-//! Tactix is an erganomic Actor Model framework for Rust inspired by  [Actix](https://github.com/actix/actix)
+//! Actor model framework for Rust built on Tokio.
 //!
-//! [Actix](https://github.com/actix/actix) provides a great API for working with actors but holds
-//! a large amount of technical debt and confusing code within it's implementation.
-//! Actix as an early solution for asynchrony originally built out it's own async runtime before
-//! moving to Tokio as a default runtime and as a consequence holds a fair amount of baggage from
-//! that time.
+//! Tactix provides an ergonomic actor model with hierarchical supervision, async
+//! handlers, automatic restart on panic, and support for both fire-and-forget
+//! (`tell`) and request-response (`ask`) message patterns.
 //!
-//! Alice Ryhl a maintainer of tokio wrote a [great article on creating an actor model with tokio](https://ryhl.io/blog/actors-with-tokio) where it is outlined how to create an actor model system using tokio channels. This however leads to relatively verbose code as events must be discriminated.
+//! # Installation
 //!
-//! Tactix attempts to apply some techniques from [Alice Ryhl's article](https://ryhl.io/blog/actors-with-tokio/) and combine them with Actix's handler syntax whilst enabling safe async handlers in order to get the best of both worlds.
-//!
-//! ## Installation
-//! You can install Tactix with Cargo:
 //! ```bash
 //! cargo add tactix
 //! ```
-//! ## Creating an Actor
-//! You can create an actor by simply implementing the `Actor` trait on a struct.
-//! ```
-//! use tactix::{Actor,Message,Ctx,Sender,Recipient,Handler};
-//! use async_trait::async_trait;
-//! use tokio::time::{sleep, Duration};
 //!
-//! // Define an Actor struct
+//! # Getting started
+//!
+//! ```rust
+//! use async_trait::async_trait;
+//! use tactix::{Actor, Ctx, Handler, Message, Recipient, Sender};
+//!
+//! // --- Actor ---
 //! struct Counter {
-//!   count: u64
+//!     count: u64,
 //! }
 //!
-//! // Implement the Actor trait on the struct
 //! impl Actor for Counter {}
 //!
-//! // Define a message
-//! use macros::Message;
+//! // --- Messages ---
 //!
 //! #[derive(Message)]
 //! struct Increment;
 //!
-//! // Define a handler for the message.
-//! // Note: this requires an async_trait macro!
-//! #[async_trait]
-//! impl Handler<Increment> for Counter {
-//!   async fn handle(&mut self, msg:Increment, _:&Ctx<Self>) {
-//!     println!("Increment");
-//!     self.count += 1;
-//!   }
-//! }
-//!
-//! // We can do the same for Decrement
 //! #[derive(Message)]
 //! struct Decrement;
 //!
-//! #[async_trait]
-//! impl Handler<Decrement> for Counter {
-//!   async fn handle(&mut self, msg:Decrement, _:&Ctx<Self>) {
-//!     println!("Decrement");
-//!     self.count -= 1;
-//!   }
-//! }
-//!
-//! // An event for getting the count
 //! #[derive(Message)]
 //! #[response(u64)]
 //! struct GetCount;
 //!
+//! // --- Handlers ---
+//!
+//! #[async_trait]
+//! impl Handler<Increment> for Counter {
+//!     async fn handle(&mut self, _: Increment, _: &Ctx<Self>) {
+//!         self.count += 1;
+//!     }
+//! }
+//!
+//! #[async_trait]
+//! impl Handler<Decrement> for Counter {
+//!     async fn handle(&mut self, _: Decrement, _: &Ctx<Self>) {
+//!         self.count -= 1;
+//!     }
+//! }
+//!
 //! #[async_trait]
 //! impl Handler<GetCount> for Counter {
-//!   async fn handle(&mut self, msg:GetCount, _:&Ctx<Self>) -> u64 {
-//!     println!("GetCount");
-//!     self.count
-//!   }
+//!     async fn handle(&mut self, _: GetCount, _: &Ctx<Self>) -> u64 {
+//!         self.count
+//!     }
 //! }
 //!
 //! #[tokio::main]
-//! async fn main() -> Result<(),String> {
-//!   // Construct the actor
-//!   let counter = Counter { count: 0 };
+//! async fn main() -> Result<(), String> {
+//!     let counter = Counter { count: 0 }.start();
 //!
-//!   // Start the actor
-//!   let addr = counter.start();
+//!     // Fire-and-forget with `tell`
+//!     counter.tell(Increment);
+//!     counter.tell(Increment);
+//!     counter.tell(Decrement);
 //!
-//!   // Let's get a Recipient of the decrement message
-//!   // This is often useful when injecting actors as dependencies
-//!   let decrementor:Recipient<Decrement> = addr.clone().recipient();
+//!     // Type-erased recipient for dependency injection
+//!     let r: Recipient<Decrement> = counter.clone().recipient();
+//!     r.tell(Decrement);
 //!
-//!   // Tell the actor to `Increment`
-//!   addr.tell(Increment);
-//!   addr.tell(Increment);
-//!   addr.tell(Increment);
+//!     // Use `ask` with a no-response message to synchronise — the response
+//!     // is sent only after all prior messages have been handled.
+//!     let _ = counter.ask(Increment).await;
 //!
-//!   // And decrement
-//!   addr.tell(Decrement);
-//!   decrementor.tell(Decrement);
-//!
-//!   // Wait for all messages to arrive
-//!   sleep(Duration::from_millis(1)).await;
-//!
-//!   // To receive a response we use the ask async method
-//!   let count = addr.ask(GetCount).await;
-//!   assert_eq!(count, 1);
-//!   Ok(())
+//!     // Request-response with `ask`
+//!     assert_eq!(counter.ask(GetCount).await, 1);
+//!     Ok(())
 //! }
 //! ```
 
@@ -115,6 +92,8 @@ use std::{
 use tokio::sync::{mpsc, oneshot};
 use tokio_util::sync::CancellationToken;
 
+pub use macros::Message;
+
 pub struct ActorSystem;
 
 #[async_trait]
@@ -123,6 +102,8 @@ impl Actor for ActorSystem {}
 static ACTOR_SYSTEM: OnceLock<Ctx<ActorSystem>> = OnceLock::new();
 
 impl ActorSystem {
+    /// Returns a reference to the global `ActorSystem` context, initialising it
+    /// on first call.
     pub fn global() -> &'static Ctx<ActorSystem> {
         ACTOR_SYSTEM.get_or_init(|| {
             let mut once = Some(ActorSystem);
@@ -133,7 +114,7 @@ impl ActorSystem {
                 },
                 CancellationToken::new(),
                 mpsc::unbounded_channel().0,
-                RestartConfig::default(),
+                SupervisionStrategy::default(),
             )
         })
     }
@@ -141,41 +122,75 @@ impl ActorSystem {
 
 type PointerToActorMessage<A> = Box<dyn ActorMessage<A>>;
 
+/// Trait implemented by all actors.
+///
+/// Actors are long-lived, stateful objects that communicate via message passing.
+/// Each actor runs in its own Tokio task and processes messages sequentially.
+///
+/// # Lifecycle
+///
+/// 1. [`started`](Actor::started) is called once before the first message.
+/// 2. Messages are handled one-by-one via [`Handler`] implementations.
+/// 3. If a handler panics, the actor restarts according to [`SupervisionStrategy`];
+///    [`restarted`](Actor::restarted) is called after each restart.
+/// 4. When stopped (via [`Ctx::stop`] or `SupervisionStrategy::NoRestart`),
+///    [`stopped`](Actor::stopped) is called and the task exits.
 #[async_trait]
 pub trait Actor: Send + Sync + Sized + 'static {
-    /// Start the actor
+    /// Spawn this actor on the global system with default supervision
+    /// ([`SupervisionStrategy::NoRestart`]) and return its address.
+    ///
+    /// To configure supervision or spawn as a child of another actor, use
+    /// [`Ctx::spawn`] or [`Ctx::spawn_with_config`] instead.
     fn start(self) -> Addr<Self> {
         let mut once = Some(self);
         ActorSystem::global().spawn_with_config(
             move || once.take().expect("Factory can only be accessed once!"),
-            RestartConfig::NoRestart,
+            SupervisionStrategy::NoRestart,
         )
     }
-    /// Override to run an action after started but before the first message
+    /// Called after the actor task starts, before any messages are processed.
     async fn started(&self, _ctx: &Ctx<Self>) {}
-    /// Override to run an action after messages have been drained and stop processed
+    /// Called after the actor has stopped (all messages drained, children
+    /// stopped) and the task is about to exit.
     async fn stopped(&self, _ctx: &Ctx<Self>) {}
-    /// Override to run an action after started when an actor has restarted but before the first message
+    /// Called after a restart before the first message is processed.
+    ///
+    /// `restarts` is the total number of restarts that have occurred.
     async fn restarted(&self, _restarts: u64, _ctx: &Ctx<Self>) {}
-    /// Override to change the interrupt behaviour. Default behaviour on escalation is to restart the parent actor
+    /// Called when a child actor has escalated after exhausting its restart
+    /// budget.
+    ///
+    /// Return `Some(Interrupt)` to influence the parent's behaviour (default:
+    /// [`Interrupt::RestartToEscalate`]), or `None` to ignore the escalation.
     async fn child_escalated(&self, _ctx: &Ctx<Self>) -> Option<Interrupt> {
         Some(Interrupt::RestartToEscalate)
     }
 }
 
+/// Outcome of an actor's event loop iteration that drives lifecycle decisions.
 pub enum Interrupt {
+    /// Gracefully stop the actor.
     Stop,
+    /// Restart the actor and, if the restart budget is exhausted, escalate
+    /// to the parent.
     RestartToEscalate,
 }
 
-pub enum RestartConfig {
-    /// Do not restart on panic. The actor task exits and no escalation is sent.
+/// Supervision strategy that controls how panics in an actor are handled.
+pub enum SupervisionStrategy {
+    /// Do not restart on panic. The actor task exits immediately with no
+    /// escalation to the parent.
     NoRestart,
-    /// Restart up to `max_restarts` times within `window` seconds, then escalate.
+    /// Restart up to `max_restarts` times within a sliding `window` of seconds.
+    ///
+    /// Once the budget is exhausted the actor stops and an escalation signal
+    /// is sent to the parent actor's [`child_escalated`](Actor::child_escalated)
+    /// hook.
     Restart { window: u64, max_restarts: u64 },
 }
 
-impl Default for RestartConfig {
+impl Default for SupervisionStrategy {
     fn default() -> Self {
         Self::Restart {
             window: 5,
@@ -188,7 +203,7 @@ fn start_actor<A, F>(
     mut factory: F,
     cancel: CancellationToken,
     escalate_to_parent: mpsc::UnboundedSender<()>,
-    restart_config: RestartConfig,
+    restart_config: SupervisionStrategy,
 ) -> Ctx<A>
 where
     A: Actor + Sync,
@@ -267,11 +282,11 @@ where
                 }
                 Interrupt::RestartToEscalate => {
                     match &restart_config {
-                        RestartConfig::NoRestart => {
+                        SupervisionStrategy::NoRestart => {
                             // Unsupervised: just exit, do not escalate.
                             break;
                         }
-                        RestartConfig::Restart {
+                        SupervisionStrategy::Restart {
                             window,
                             max_restarts,
                         } => {
@@ -299,16 +314,18 @@ where
     ctx
 }
 
+/// Context handle for an actor.
+///
+/// Provides access to the actor's address and the ability to spawn child actors.
+/// Every [`Handler`] receives a reference to `Ctx` so actors can supervise their
+/// children.
+///
+/// Cloning `Ctx` is cheap (it uses `Arc` internally).
 pub struct Ctx<A: Actor> {
-    /// Addr for the actor
     addr: Addr<A>,
-    /// Store children
     children: Arc<Mutex<Vec<Arc<dyn Stoppable + Send + Sync>>>>,
-    /// Signal to stop
     cancel: CancellationToken,
-    /// Signal that the actor has stopped
     stopped: CancellationToken,
-    /// Channel to escalate to parent
     child_escalations: mpsc::UnboundedSender<()>,
 }
 
@@ -325,19 +342,32 @@ impl<A: Actor> Clone for Ctx<A> {
 }
 
 impl<A: Actor> Ctx<A> {
+    /// Returns the address of this actor.
+    #[must_use]
     pub fn address(&self) -> Addr<A> {
         self.addr.clone()
     }
 
+    /// Spawn a child actor with the default supervision
+    /// ([`SupervisionStrategy::default`]).
+    ///
+    /// The child is linked to this actor's cancellation scope: if the parent
+    /// stops the child is also cancelled. When the child exhausts its restart
+    /// budget the parent's [`child_escalated`](Actor::child_escalated) hook is
+    /// invoked.
     pub fn spawn<B, F>(&self, factory: F) -> Addr<B>
     where
         F: FnMut() -> B + Send + 'static,
         B: Actor,
     {
-        self.spawn_with_config(factory, RestartConfig::default())
+        self.spawn_with_config(factory, SupervisionStrategy::default())
     }
 
-    pub fn spawn_with_config<B, F>(&self, factory: F, config: RestartConfig) -> Addr<B>
+    /// Spawn a child actor with a custom supervision strategy.
+    ///
+    /// See [`spawn`](Ctx::spawn) for details. Use this method when you need
+    /// to override the default [`SupervisionStrategy`].
+    pub fn spawn_with_config<B, F>(&self, factory: F, config: SupervisionStrategy) -> Addr<B>
     where
         F: FnMut() -> B + Send + 'static,
         B: Actor,
@@ -353,31 +383,75 @@ impl<A: Actor> Ctx<A> {
     }
 }
 
+/// Interface for objects that can be stopped and awaited for shutdown.
 #[async_trait]
 pub trait Stoppable {
+    /// Signal the object to stop. This is non-blocking.
     fn stop(&self);
+    /// Wait until the object has fully stopped.
     async fn wait_until_stopped(&self);
+    /// Signal all children to stop and wait for them to finish.
     async fn stop_all_children(&self);
 }
 
+/// Trait implemented by all message types.
+///
+/// `Message` defines the response type associated with a message. Messages
+/// must be [`Send`] and `'static`.
+///
+/// # Derive macro
+///
+/// The `macros` crate provides a convenience derive macro:
+///
+/// ```rust,ignore
+/// use tactix::Message;
+///
+/// #[derive(Message)]
+/// struct Ping;                       // Response = ()
+///
+/// #[derive(Message)]
+/// #[response(String)]
+/// struct GetName;                    // Response = String
+/// ```
 pub trait Message: Send + 'static {
+    /// The type returned by the handler for this message (use `()` for
+    /// fire-and-forget messages).
     type Response: Send;
 }
 
+/// Trait implemented on an [`Actor`] to process a specific [`Message`] type.
+///
+/// Each actor can implement `Handler` for any number of message types, each
+/// with its own response type.
+///
+/// # Async
+///
+/// Handlers are async and receive a borrow to the actor's [`Ctx`], allowing
+/// them to spawn children or send messages to other actors while handling.
 #[async_trait]
 pub trait Handler<M>
 where
     Self: Actor,
     M: Message,
 {
+    /// Process an incoming message and return a response.
     async fn handle(&mut self, msg: M, ctx: &Ctx<Self>) -> M::Response;
 }
 
+/// Internal trait for type-erased message dispatch inside the actor task.
+///
+/// You should not need to implement this trait directly; it is automatically
+/// implemented via [`Envelope`] for any pair that satisfies
+/// `A: Actor + Handler<M>`.
 #[async_trait]
 pub trait ActorMessage<A: Actor>: Send {
     async fn process(&mut self, actor: &mut A, ctx: &Ctx<A>);
 }
 
+/// Wraps a message payload with an optional oneshot channel for the response.
+///
+/// When a response channel is provided the handler's return value is sent back
+/// over it. When `tx` is `None` the message is fire-and-forget.
 pub struct Envelope<M>
 where
     M: Message,
@@ -390,6 +464,7 @@ impl<M> Envelope<M>
 where
     M: Message,
 {
+    /// Creates a new `Envelope`, boxed, ready to send over the actor's channel.
     pub fn new(msg: Option<M>, tx: Option<oneshot::Sender<M::Response>>) -> Box<Self> {
         Box::new(Self { msg, tx })
     }
@@ -411,6 +486,12 @@ where
     }
 }
 
+/// Address of an actor. Messages are sent through this handle.
+///
+/// `Addr` is cheaply cloneable and can be used to:
+/// - Fire-and-forget a message via [`tell`](Sender::tell).
+/// - Await a response via [`ask`](Sender::ask).
+/// - Create a type-erased [`Recipient`] via [`recipient`](Sender::recipient).
 pub struct Addr<A>
 where
     A: Actor,
@@ -420,6 +501,7 @@ where
 }
 
 impl<A: Actor> Addr<A> {
+    /// Wait until the actor task has fully stopped.
     pub async fn wait_until_stopped(&self) {
         self.stopped.cancelled().await;
     }
@@ -437,13 +519,26 @@ where
     }
 }
 
+/// Capability to send messages of type `M` to an actor.
+///
+/// Implemented by both [`Addr`] and [`Recipient`].
 #[async_trait]
 pub trait Sender<M>
 where
     M: Message,
 {
+    /// Send a message and await the response.
+    ///
+    /// # Panics
+    ///
+    /// Panics if the actor has stopped before sending a response.
     async fn ask(&self, msg: M) -> M::Response;
+    /// Send a message without waiting for a response (fire-and-forget).
     fn tell(&self, msg: M);
+    /// Convert this sender into a type-erased [`Recipient`].
+    ///
+    /// This is useful for dependency injection: a `Recipient<M>` does not
+    /// expose the actor type.
     fn recipient(self) -> Recipient<M>
     where
         Self: Sized + Send + Sync + 'static,
@@ -468,7 +563,11 @@ where
     }
 }
 
-/// An object that has the ability to send messages of a given type M
+/// Type-erased sender for a specific message type.
+///
+/// Wraps any [`Sender<M>`] behind a trait object so the concrete actor type
+/// is hidden. Useful for dependency injection where you want to expose only
+/// the ability to send a particular message.
 pub struct Recipient<M: Message> {
     tx: Box<dyn Sender<M> + Send + Sync + 'static>,
 }
@@ -477,6 +576,7 @@ impl<M> Recipient<M>
 where
     M: Message,
 {
+    /// Create a new `Recipient` from a boxed [`Sender`].
     pub fn new(tx: Box<dyn Sender<M> + Send + Sync + 'static>) -> Self {
         Recipient { tx }
     }
@@ -522,7 +622,6 @@ where
 mod simple_tests {
     use crate::{Actor, Addr, Ctx, Handler, Message, Sender, Stoppable};
     use async_trait::async_trait;
-    use macros::Message;
     use std::time::Instant;
 
     #[tokio::test(flavor = "multi_thread")]

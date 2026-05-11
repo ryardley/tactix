@@ -12,71 +12,64 @@ This is not a drop-in replacement for Actix but should be a relatively light lif
 
 ## Usage
 
- ```rust
- use macros::Message;
+```rust
+use async_trait::async_trait;
+use tactix::{Actor, Ctx, Handler, Message, Recipient, Sender};
 
- #[derive(Debug, Message)]
- pub struct Increment;
+#[derive(Debug, Message)]
+pub struct Increment;
 
- #[derive(Debug, Message)]
- pub struct Decrement;
+#[derive(Debug, Message)]
+pub struct Decrement;
 
- #[derive(Debug, Message)]
- #[response(u64)]
- pub struct GetCount;
+#[derive(Debug, Message)]
+#[response(u64)]
+pub struct GetCount;
 
 pub struct Counter {
     count: u64,
 }
 
-impl Counter {
-    pub fn new() -> Self {
-        Self { count: 0 }
-    }
-}
-
-impl Actor for Counter {
-    type Context = Context<Self>;
-}
+impl Actor for Counter {}
 
 #[async_trait]
 impl Handler<Increment> for Counter {
-    async fn handle(&mut self, _msg: Increment, _:Self::Context) {
-        println!("INC");
+    async fn handle(&mut self, _: Increment, _: &Ctx<Self>) {
         self.count += 1;
     }
 }
 
 #[async_trait]
 impl Handler<Decrement> for Counter {
-    async fn handle(&mut self, _msg: Decrement, _:Self::Context) {
-        println!("DEC");
+    async fn handle(&mut self, _: Decrement, _: &Ctx<Self>) {
         self.count -= 1;
     }
 }
 
 #[async_trait]
 impl Handler<GetCount> for Counter {
-    async fn handle(&mut self, _: GetCount, _:Self::Context) -> u64 {
-        println!("GET");
-        let s = self.count;
-        println!("SENDING: {}", s);
-        s
+    async fn handle(&mut self, _: GetCount, _: &Ctx<Self>) -> u64 {
+        self.count
     }
 }
 
 #[tokio::main]
-async fn main() -> Result<(), Box<String>> {
-    let addr = Counter::new().start();
-    let incrementor: Recipient<Increment> = addr.clone().recipient();
-    let decrementor: Recipient<Decrement> = addr.clone().recipient();
-    addr.do_send(Increment);
-    incrementor.do_send(Increment);
-    addr.do_send(Increment);
-    addr.do_send(Increment);
-    addr.do_send(Decrement);
-    decrementor.do_send(Decrement);
-    let count = addr.send(GetCount).await.unwrap();
+async fn main() -> Result<(), Box<dyn std::error::Error>> {
+    let counter = Counter { count: 0 }.start();
+
+    // Fire-and-forget with `tell`
+    counter.tell(Increment);
+    counter.tell(Increment);
+    counter.tell(Increment);
+    counter.tell(Decrement);
+
+    // Type-erased recipient for dependency injection
+    let decrementor: Recipient<Decrement> = counter.clone().recipient();
+    decrementor.tell(Decrement);
+
+    // Use `ask` to synchronise and get a response
+    let _ = counter.ask(Increment).await;
+    let count = counter.ask(GetCount).await;
 
     assert_eq!(count, 2);
     Ok(())
