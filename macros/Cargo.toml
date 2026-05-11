@@ -1,7 +1,11 @@
 [package]
-name = "macros"
-version = "0.1.0"
+name = "tactix-macros"
+version = "0.0.7"
 edition = "2024"
+description = "Procedural macros for the tactix actor framework."
+license = "MIT"
+repository = "https://github.com/ryardley/tactix"
+documentation = "https://docs.rs/tactix-macros"
 
 [dependencies]
 syn = { version = "2.0.111", features = ["full"] }

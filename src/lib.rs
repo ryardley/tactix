@@ -92,7 +92,7 @@ use std::{
 use tokio::sync::{mpsc, oneshot};
 use tokio_util::sync::CancellationToken;
 
-pub use macros::Message;
+pub use tactix_macros::Message;
 
 /// The global root actor system.
 ///
@@ -471,7 +471,7 @@ pub trait Stoppable {
 ///
 /// # Derive macro
 ///
-/// The `macros` crate provides a convenience derive macro:
+/// The `tactix_macros` crate provides a convenience derive macro:
 ///
 /// ```rust,ignore
 /// use tactix::Message;
