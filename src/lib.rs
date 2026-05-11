@@ -33,10 +33,10 @@
 //! impl Actor for Counter {}
 //!
 //! // Define a message
+//! use macros::Message;
+//!
+//! #[derive(Message)]
 //! struct Increment;
-//! impl Message for Increment {
-//!   type Response = ();
-//! }
 //!
 //! // Define a handler for the message.
 //! // Note: this requires an async_trait macro!
@@ -49,10 +49,8 @@
 //! }
 //!
 //! // We can do the same for Decrement
+//! #[derive(Message)]
 //! struct Decrement;
-//! impl Message for Decrement {
-//!   type Response = ();
-//! }
 //!
 //! #[async_trait]
 //! impl Handler<Decrement> for Counter {
@@ -63,10 +61,9 @@
 //! }
 //!
 //! // An event for getting the count
+//! #[derive(Message)]
+//! #[response(u64)]
 //! struct GetCount;
-//! impl Message for GetCount {
-//!   type Response = u64;
-//! }
 //!
 //! #[async_trait]
 //! impl Handler<GetCount> for Counter {

@@ -12,24 +12,18 @@ This is not a drop-in replacement for Actix but should be a relatively light lif
 
 ## Usage
 
-```rust
-#[derive(Debug)]
-pub struct Increment;
-impl Message for Increment {
-    type Response = ();
-}
+ ```rust
+ use macros::Message;
 
-#[derive(Debug)]
-pub struct Decrement;
-impl Message for Decrement {
-    type Response = ();
-}
+ #[derive(Debug, Message)]
+ pub struct Increment;
 
-#[derive(Debug)]
-pub struct GetCount;
-impl Message for GetCount {
-    type Response = u64;
-}
+ #[derive(Debug, Message)]
+ pub struct Decrement;
+
+ #[derive(Debug, Message)]
+ #[response(u64)]
+ pub struct GetCount;
 
 pub struct Counter {
     count: u64,
@@ -88,4 +82,7 @@ async fn main() -> Result<(), Box<String>> {
     Ok(())
 }
 ```
+
+
+
 
