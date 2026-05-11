@@ -18,7 +18,6 @@ For more informamtion on the inner workings of tactix you can read the blog post
 ## Usage
 
 ```rust
-use async_trait::async_trait;
 use tactix::{Actor, Ctx, Handler, Message, Recipient, Sender};
 
 #[derive(Debug, Message)]
@@ -37,21 +36,18 @@ pub struct Counter {
 
 impl Actor for Counter {}
 
-#[async_trait]
 impl Handler<Increment> for Counter {
     async fn handle(&mut self, _: Increment, _: &Ctx<Self>) {
         self.count += 1;
     }
 }
 
-#[async_trait]
 impl Handler<Decrement> for Counter {
     async fn handle(&mut self, _: Decrement, _: &Ctx<Self>) {
         self.count -= 1;
     }
 }
 
-#[async_trait]
 impl Handler<GetCount> for Counter {
     async fn handle(&mut self, _: GetCount, _: &Ctx<Self>) -> u64 {
         self.count

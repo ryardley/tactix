@@ -13,7 +13,6 @@
 //! # Getting started
 //!
 //! ```rust
-//! use async_trait::async_trait;
 //! use tactix::{Actor, Ctx, Handler, Message, Recipient, Sender};
 //!
 //! // --- Actor ---
@@ -37,21 +36,18 @@
 //!
 //! // --- Handlers ---
 //!
-//! #[async_trait]
 //! impl Handler<Increment> for Counter {
 //!     async fn handle(&mut self, _: Increment, _: &Ctx<Self>) {
 //!         self.count += 1;
 //!     }
 //! }
 //!
-//! #[async_trait]
 //! impl Handler<Decrement> for Counter {
 //!     async fn handle(&mut self, _: Decrement, _: &Ctx<Self>) {
 //!         self.count -= 1;
 //!     }
 //! }
 //!
-//! #[async_trait]
 //! impl Handler<GetCount> for Counter {
 //!     async fn handle(&mut self, _: GetCount, _: &Ctx<Self>) -> u64 {
 //!         self.count
@@ -83,6 +79,7 @@
 
 use async_trait::async_trait;
 use futures::FutureExt;
+use std::future::Future;
 use std::sync::OnceLock;
 use std::{
     panic::AssertUnwindSafe,
@@ -141,10 +138,8 @@ pub struct ActorSystem;
 #[derive(Message)]
 pub struct Shutdown;
 
-#[async_trait]
 impl Actor for ActorSystem {}
 
-#[async_trait]
 impl Handler<Shutdown> for ActorSystem {
     async fn handle(&mut self, _: Shutdown, ctx: &Ctx<Self>) {
         ctx.stop();
@@ -205,7 +200,6 @@ type PointerToActorMessage<A> = Box<dyn ActorMessage<A>>;
 ///    [`restarted`](Actor::restarted) is called after each restart.
 /// 4. When stopped (via [`Ctx::stop`] or `SupervisionStrategy::NoRestart`),
 ///    [`stopped`](Actor::stopped) is called and the task exits.
-#[async_trait]
 pub trait Actor: Send + Sync + Sized + 'static {
     /// Spawn this actor on the global system with default supervision
     /// ([`SupervisionStrategy::NoRestart`]) and return its address.
@@ -220,21 +214,21 @@ pub trait Actor: Send + Sync + Sized + 'static {
         )
     }
     /// Called after the actor task starts, before any messages are processed.
-    async fn started(&self, _ctx: &Ctx<Self>) {}
+    fn started(&self, _ctx: &Ctx<Self>) -> impl Future<Output = ()> + Send { async {} }
     /// Called after the actor has stopped (all messages drained, children
     /// stopped) and the task is about to exit.
-    async fn stopped(&self, _ctx: &Ctx<Self>) {}
+    fn stopped(&self, _ctx: &Ctx<Self>) -> impl Future<Output = ()> + Send { async {} }
     /// Called after a restart before the first message is processed.
     ///
     /// `restarts` is the total number of restarts that have occurred.
-    async fn restarted(&self, _restarts: u64, _ctx: &Ctx<Self>) {}
+    fn restarted(&self, _restarts: u64, _ctx: &Ctx<Self>) -> impl Future<Output = ()> + Send { async {} }
     /// Called when a child actor has escalated after exhausting its restart
     /// budget.
     ///
     /// Return `Some(Interrupt)` to influence the parent's behaviour (default:
     /// [`Interrupt::RestartToEscalate`]), or `None` to ignore the escalation.
-    async fn child_escalated(&self, _ctx: &Ctx<Self>) -> Option<Interrupt> {
-        Some(Interrupt::RestartToEscalate)
+    fn child_escalated(&self, _ctx: &Ctx<Self>) -> impl Future<Output = Option<Interrupt>> + Send {
+        async { Some(Interrupt::RestartToEscalate) }
     }
 }
 
@@ -498,14 +492,13 @@ pub trait Message: Send + 'static {
 ///
 /// Handlers are async and receive a borrow to the actor's [`Ctx`], allowing
 /// them to spawn children or send messages to other actors while handling.
-#[async_trait]
 pub trait Handler<M>
 where
     Self: Actor,
     M: Message,
 {
     /// Process an incoming message and return a response.
-    async fn handle(&mut self, msg: M, ctx: &Ctx<Self>) -> M::Response;
+    fn handle(&mut self, msg: M, ctx: &Ctx<Self>) -> impl Future<Output = M::Response> + Send;
 }
 
 /// Internal trait for type-erased message dispatch inside the actor task.
@@ -691,7 +684,6 @@ where
 #[cfg(test)]
 mod simple_tests {
     use crate::{Actor, Addr, Ctx, Handler, Message, Sender, Stoppable};
-    use async_trait::async_trait;
     use std::time::Instant;
 
     #[tokio::test(flavor = "multi_thread")]
@@ -713,21 +705,18 @@ mod simple_tests {
         #[response(i64)]
         struct GetCount;
 
-        #[async_trait]
         impl Handler<Increment> for Counter {
             async fn handle(&mut self, _: Increment, _: &Ctx<Self>) {
                 self.count += 1;
             }
         }
 
-        #[async_trait]
         impl Handler<Decrement> for Counter {
             async fn handle(&mut self, _: Decrement, _: &Ctx<Self>) {
                 self.count -= 1;
             }
         }
 
-        #[async_trait]
         impl Handler<GetCount> for Counter {
             async fn handle(&mut self, _: GetCount, _: &Ctx<Self>) -> i64 {
                 self.count
@@ -772,7 +761,6 @@ mod simple_tests {
             value: i64,
         }
 
-        #[async_trait]
         impl Actor for Db {
             async fn stopped(&self, _: &Ctx<Self>) {
                 println!("Db stopped");
@@ -786,14 +774,12 @@ mod simple_tests {
         #[derive(Message)]
         struct DbSet(i64);
 
-        #[async_trait]
         impl Handler<DbGet> for Db {
             async fn handle(&mut self, _: DbGet, _: &Ctx<Self>) -> i64 {
                 self.value
             }
         }
 
-        #[async_trait]
         impl Handler<DbSet> for Db {
             async fn handle(&mut self, msg: DbSet, _: &Ctx<Self>) {
                 self.value = msg.0;
@@ -804,7 +790,6 @@ mod simple_tests {
             db: Addr<Db>,
         }
 
-        #[async_trait]
         impl Actor for Counter {
             async fn stopped(&self, _: &Ctx<Self>) {
                 println!("Counter stopped");
@@ -825,7 +810,6 @@ mod simple_tests {
         #[derive(Message)]
         struct Stop;
 
-        #[async_trait]
         impl Handler<Increment> for Counter {
             async fn handle(&mut self, _: Increment, _: &Ctx<Self>) -> i64 {
                 let count = self.db.ask(DbGet).await + 1;
@@ -834,14 +818,12 @@ mod simple_tests {
             }
         }
 
-        #[async_trait]
         impl Handler<GetCount> for Counter {
             async fn handle(&mut self, _: GetCount, _: &Ctx<Self>) -> i64 {
                 self.db.ask(DbGet).await
             }
         }
 
-        #[async_trait]
         impl Handler<Poison> for Counter {
             async fn handle(&mut self, _: Poison, _: &Ctx<Self>) {
                 panic!("poisoned!");
@@ -850,14 +832,12 @@ mod simple_tests {
 
         struct Root {}
 
-        #[async_trait]
         impl Actor for Root {
             async fn stopped(&self, _: &Ctx<Self>) {
                 println!("Root stopped");
             }
         }
 
-        #[async_trait]
         impl Handler<Stop> for Root {
             async fn handle(&mut self, _: Stop, ctx: &Ctx<Self>) {
                 println!("in Stop handler");
@@ -869,7 +849,6 @@ mod simple_tests {
         #[response(Addr<Counter>)]
         struct GetCounter;
 
-        #[async_trait]
         impl Handler<GetCounter> for Root {
             async fn handle(&mut self, _: GetCounter, ctx: &Ctx<Self>) -> Addr<Counter> {
                 let db = ctx.spawn(|| Db { value: 0 });
@@ -906,7 +885,6 @@ mod bank_tests {
     use std::time::Duration;
 
     use crate::{Actor, Ctx, Handler, Message, Sender};
-    use async_trait::async_trait;
     use tokio::time::sleep;
 
     struct Deposit(u64);
@@ -948,7 +926,6 @@ mod bank_tests {
 
     impl Actor for BankAccount {}
 
-    #[async_trait]
     impl Handler<Deposit> for BankAccount {
         async fn handle(&mut self, msg: Deposit, _: &Ctx<Self>) {
             tokio::time::sleep(Duration::from_millis(6)).await;
@@ -957,7 +934,6 @@ mod bank_tests {
             println!("Deposit: {}. New balance: {}", msg.0, self.balance);
         }
     }
-    #[async_trait]
     impl Handler<Withdraw> for BankAccount {
         async fn handle(&mut self, msg: Withdraw, _: &Ctx<Self>) -> Result<(), String> {
             if self.balance >= msg.0 {
@@ -975,14 +951,12 @@ mod bank_tests {
         }
     }
 
-    #[async_trait]
     impl Handler<GetAccountInfo> for BankAccount {
         async fn handle(&mut self, _msg: GetAccountInfo, _: &Ctx<Self>) -> (u64, u64, u64) {
             println!("GetAccountInfo!");
             (self.balance, self.total_deposits, self.total_withdrawals)
         }
     }
-    #[async_trait]
     impl Handler<GetBalance> for BankAccount {
         async fn handle(&mut self, _msg: GetBalance, _: &Ctx<Self>) -> u64 {
             self.balance
