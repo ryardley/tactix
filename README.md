@@ -1,5 +1,3 @@
-_NOTE: This is currently a proof of concept and is not ready for usage_
-
 # Tactix
 
 #### A Simple Actor Model Implementation inspired by Actix with Tokio under the hood

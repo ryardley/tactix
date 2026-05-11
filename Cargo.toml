@@ -1,6 +1,10 @@
+[workspace]
+members = [".", "macros"]
+resolver = "3"
+
 [package]
 name = "tactix"
-version = "0.0.3"
+version = "0.0.4"
 edition = "2021"
 description = "A simple Actor Model based on Actix and Tokio."
 license = "MIT"
@@ -11,5 +15,12 @@ categories = ["asynchronous"]
 readme = "README.md"
 
 [dependencies]
-async-trait = "0.1.82"
-tokio = { version = "1.40.0", features = ["full"] }
+tokio = { version = "1.48.0", features = ["full"] }
+anyhow = { version = "1.0.100" }
+thiserror = "2.0.17"
+async-trait = "0.1.89"
+macros = { path = "./macros" }
+actix = "0.13.5"
+futures = "0.3.32"
+tokio-util = "0.7.18"
+
