@@ -94,6 +94,40 @@ use tokio_util::sync::CancellationToken;
 
 pub use macros::Message;
 
+/// The global root actor system.
+///
+/// `ActorSystem` is a singleton sentinel actor that serves as the root of the
+/// actor hierarchy. Actors spawned via [`Actor::start()`] are registered as
+/// children of the system; when the system stops, all children are stopped
+/// recursively.
+///
+/// # Access
+///
+/// - [`ActorSystem::global()`] returns the system's [`Ctx`], giving you access
+///   to [`spawn`](Ctx::spawn) for manual child creation.
+/// - [`ActorSystem::addr()`] returns the system's [`Addr`], so you can send it
+///   messages — most importantly [`Shutdown`].
+///
+/// # Graceful shutdown
+///
+/// Calling [`ActorSystem::shutdown().await`](ActorSystem::shutdown) performs a
+/// two-phase graceful shutdown:
+///
+/// 1. Sends a [`Shutdown`] message to the system, which is queued behind any
+///    messages already in the mailbox.
+/// 2. Waits for the system to drain its mailbox, stop all children (via
+///    [`Stoppable::stop`] + [`Stoppable::wait_until_stopped`]), invoke the
+///    [`Actor::stopped`] lifecycle hook, and finally exit the actor task.
+///
+/// Because `Shutdown` is delivered through the normal message queue, any
+/// messages sent *before* it are processed first. This ensures an orderly
+/// wind-down.
+///
+/// # Panics
+///
+/// The global system is initialised lazily on first access and cannot be
+/// re-initialised afterwards. Sending messages to the system after it has
+/// shut down is a no-op (the message is dropped).
 pub struct ActorSystem;
 
 /// Message to gracefully shut down the global actor system.
@@ -101,6 +135,9 @@ pub struct ActorSystem;
 /// Sending this to [`ActorSystem::addr()`] triggers a graceful shutdown:
 /// the system finishes processing the current message, stops all children,
 /// calls [`Actor::stopped`], and then exits.
+///
+/// You typically don't need to construct this manually — use
+/// [`ActorSystem::shutdown()`] instead.
 #[derive(Message)]
 pub struct Shutdown;
 
