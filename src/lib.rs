@@ -200,7 +200,7 @@ type PointerToActorMessage<A> = Box<dyn ActorMessage<A>>;
 ///    [`restarted`](Actor::restarted) is called after each restart.
 /// 4. When stopped (via [`Ctx::stop`] or `SupervisionStrategy::NoRestart`),
 ///    [`stopped`](Actor::stopped) is called and the task exits.
-pub trait Actor: Send + Sync + Sized + 'static {
+pub trait Actor: Send + Sized + 'static {
     /// Spawn this actor on the global system with default supervision
     /// ([`SupervisionStrategy::NoRestart`]) and return its address.
     ///
@@ -214,20 +214,29 @@ pub trait Actor: Send + Sync + Sized + 'static {
         )
     }
     /// Called after the actor task starts, before any messages are processed.
-    fn started(&self, _ctx: &Ctx<Self>) -> impl Future<Output = ()> + Send { async {} }
+    fn started(&mut self, _ctx: &Ctx<Self>) -> impl Future<Output = ()> + Send {
+        async {}
+    }
     /// Called after the actor has stopped (all messages drained, children
     /// stopped) and the task is about to exit.
-    fn stopped(&self, _ctx: &Ctx<Self>) -> impl Future<Output = ()> + Send { async {} }
+    fn stopped(&mut self, _ctx: &Ctx<Self>) -> impl Future<Output = ()> + Send {
+        async {}
+    }
     /// Called after a restart before the first message is processed.
     ///
     /// `restarts` is the total number of restarts that have occurred.
-    fn restarted(&self, _restarts: u64, _ctx: &Ctx<Self>) -> impl Future<Output = ()> + Send { async {} }
+    fn restarted(&mut self, _restarts: u64, _ctx: &Ctx<Self>) -> impl Future<Output = ()> + Send {
+        async {}
+    }
     /// Called when a child actor has escalated after exhausting its restart
     /// budget.
     ///
     /// Return `Some(Interrupt)` to influence the parent's behaviour (default:
     /// [`Interrupt::RestartToEscalate`]), or `None` to ignore the escalation.
-    fn child_escalated(&self, _ctx: &Ctx<Self>) -> impl Future<Output = Option<Interrupt>> + Send {
+    fn child_escalated(
+        &mut self,
+        _ctx: &Ctx<Self>,
+    ) -> impl Future<Output = Option<Interrupt>> + Send {
         async { Some(Interrupt::RestartToEscalate) }
     }
 }
@@ -270,7 +279,7 @@ fn start_actor<A, F>(
     restart_config: SupervisionStrategy,
 ) -> Ctx<A>
 where
-    A: Actor + Sync,
+    A: Actor,
     F: FnMut() -> A + Send + 'static,
 {
     let (tx, mut rx) = mpsc::unbounded_channel::<PointerToActorMessage<A>>();
@@ -762,7 +771,7 @@ mod simple_tests {
         }
 
         impl Actor for Db {
-            async fn stopped(&self, _: &Ctx<Self>) {
+            async fn stopped(&mut self, _: &Ctx<Self>) {
                 println!("Db stopped");
             }
         }
@@ -791,7 +800,7 @@ mod simple_tests {
         }
 
         impl Actor for Counter {
-            async fn stopped(&self, _: &Ctx<Self>) {
+            async fn stopped(&mut self, _: &Ctx<Self>) {
                 println!("Counter stopped");
             }
         }
@@ -833,7 +842,7 @@ mod simple_tests {
         struct Root {}
 
         impl Actor for Root {
-            async fn stopped(&self, _: &Ctx<Self>) {
+            async fn stopped(&mut self, _: &Ctx<Self>) {
                 println!("Root stopped");
             }
         }
